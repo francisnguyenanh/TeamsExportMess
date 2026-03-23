@@ -56,6 +56,69 @@ from get_token_helper import get_valid_token                  # noqa: E402
 import list_channels as lc                                    # noqa: E402
 import export_mod    as em                                    # noqa: E402
 
+
+# ── Beta-endpoint fallback for message fetching ───────────────────────────────
+# GET /v1.0/teams/{id}/channels/{id}/messages requires ChannelMessage.Read.All
+# with admin consent.  The /beta endpoint tolerates delegated Teams-app tokens.
+
+def _fetch_messages_beta(team_id: str, channel_id: str, headers: dict,
+                         date_from: str = "", date_to: str = "",
+                         include_replies: bool = True) -> list[dict]:
+    """
+    Same logic as em.fetch_messages() but hits the /beta endpoint.
+    Used as automatic fallback when /v1.0 returns 403.
+    """
+    import requests as _req
+
+    def _api_get(url):
+        resp = _req.get(url, headers=headers, timeout=30)
+        if resp.status_code == 401:
+            raise PermissionError("TOKEN_EXPIRED")
+        if resp.status_code == 403:
+            raise PermissionError(f"ACCESS_DENIED: {url}")
+        resp.raise_for_status()
+        return resp.json()
+
+    url = (f"https://graph.microsoft.com/beta"
+           f"/teams/{team_id}/channels/{channel_id}/messages")
+    rows = []
+    page_num = 0
+
+    while url:
+        page_num += 1
+        data = _api_get(url)
+
+        for msg in data.get("value", []):
+            if msg.get("messageType") != "message":
+                continue
+            created = msg.get("createdDateTime", "")
+            if date_from and created < date_from:
+                continue
+            if date_to and created > date_to + "T23:59:59Z":
+                continue
+
+            rows.append(em.parse_msg(msg, is_reply=False))
+
+            if include_replies:
+                replies_url = (f"https://graph.microsoft.com/beta"
+                               f"/teams/{team_id}/channels/{channel_id}"
+                               f"/messages/{msg['id']}/replies")
+                try:
+                    rdata = _api_get(replies_url)
+                    for r in sorted(rdata.get("value", []),
+                                    key=lambda x: x.get("createdDateTime", "")):
+                        if r.get("messageType") == "message":
+                            rows.append(em.parse_msg(r, is_reply=True))
+                except PermissionError:
+                    raise
+                except Exception:
+                    pass
+
+        url = data.get("@odata.nextLink")
+
+    return rows
+
+
 # ── File paths ────────────────────────────────────────────────────────────────
 CONFIG_FILE       = BASE_DIR / "config.json"
 EXPORT_STATE_FILE = BASE_DIR / "export_state.json"
@@ -271,6 +334,49 @@ def step1_password():
     return redirect(url_for("step1"))
 
 
+@app.route("/step1/manual", methods=["POST"])
+def step1_manual():
+    import base64 as _b64
+    token = request.form.get("token", "").strip()
+    if not token:
+        flash("❌ Please paste a token.", "error")
+        return redirect(url_for("step1"))
+    if len(token) < 100:
+        flash("❌ Token looks too short — make sure you copied the full Bearer token.", "error")
+        return redirect(url_for("step1"))
+    parts = token.split(".")
+    if len(parts) < 3:
+        flash("❌ Token format invalid — expected a JWT (3 dot-separated segments).", "error")
+        return redirect(url_for("step1"))
+
+    # Validate that this token is scoped for Microsoft Graph, not the Teams web app.
+    # Graph tokens have aud == 'https://graph.microsoft.com' or
+    # '00000003-0000-0000-c000-000000000000'.
+    GRAPH_AUDIENCES = {
+        "https://graph.microsoft.com",
+        "00000003-0000-0000-c000-000000000000",
+    }
+    try:
+        padded  = parts[1] + "=" * (4 - len(parts[1]) % 4)
+        payload = json.loads(_b64.b64decode(padded))
+        aud = payload.get("aud", "")
+        if aud not in GRAPH_AUDIENCES:
+            flash(
+                f"❌ Wrong token audience: '{aud}'. "
+                "This token is for the Teams web app, not Microsoft Graph. "
+                "In DevTools, filter Network requests by 'graph.microsoft.com' and copy "
+                "the Authorization header from one of those requests.",
+                "error",
+            )
+            return redirect(url_for("step1"))
+    except Exception:
+        pass  # If we can’t decode it, let save_token handle the bad token later
+
+    save_token(token)
+    flash("✅ Token saved! (Graph API audience confirmed)", "success")
+    return redirect(url_for("step2"))
+
+
 # ── Step 2: Select Channels ───────────────────────────────────────────────────
 
 @app.route("/step2")
@@ -441,29 +547,44 @@ def step4_start():
                 })
 
                 rows = None
-                for attempt in range(2):
+                for attempt in range(3):   # 0=v1.0, 1=/beta fallback, 2=token-refresh+v1.0
                     try:
-                        rows = em.fetch_messages(
+                        fetch_fn = _fetch_messages_beta if attempt == 1 else em.fetch_messages
+                        rows = fetch_fn(
                             team_id, channel_id, headers,
                             date_from=date_from,
                             date_to=date_to,
                             include_replies=inc_reply,
                         )
+                        if attempt == 1:
+                            emit({"type": "info", "message": "ℹ️ Used /beta endpoint (v1.0 returned 403)"})
                         break
                     except PermissionError as e:
                         err = str(e)
-                        if "TOKEN_EXPIRED" in err and attempt == 0:
+                        if "TOKEN_EXPIRED" in err and attempt != 1:
                             emit({"type": "info", "message": "🔄 Token expired, refreshing via SSO..."})
                             new_token = get_token_sso(browser=cfg.get("browser", "edge"))
                             if new_token:
                                 save_token(new_token)
                                 headers = em.make_headers(new_token)
                                 emit({"type": "info", "message": "✅ Token refreshed, resuming..."})
+                                continue
                             else:
                                 emit({"type": "error", "message": "❌ Could not refresh token"})
                                 break
+                        elif "ACCESS_DENIED" in err and attempt == 0:
+                            emit({"type": "info", "message": "⚠️ /v1.0 returned 403 — retrying with /beta endpoint..."})
+                            continue   # → attempt 1: beta fallback
                         else:
-                            emit({"type": "error", "message": f"⛔ Skipping — {err}"})
+                            emit({
+                                "type": "error",
+                                "message": (
+                                    f"⛔ Skipping — {err}\n"
+                                    "Hint: In DevTools, open a channel in Teams to trigger a "
+                                    "graph.microsoft.com/v1.0/teams/.../messages request, then "
+                                    "copy that Authorization token to Step 1."
+                                ),
+                            })
                             break
 
                 if rows is None:

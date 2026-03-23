@@ -9,6 +9,7 @@ Cách dùng:
 """
 
 import argparse
+import html
 import json
 import re
 import requests
@@ -30,13 +31,36 @@ def make_headers(token: str) -> dict:
 
 
 def strip_html(text: str) -> str:
-    """Xóa HTML tags, giữ lại text và xuống dòng."""
-    text = (text
-            .replace("<br>", "\n")
-            .replace("<br/>", "\n")
-            .replace("</p>", "\n")
-            .replace("<p>", ""))
-    return re.sub(r"<[^>]+>", "", text).strip()
+    """Xóa HTML tags, decode HTML entities, chuẩn hoá khoảng trắng."""
+    # 1. Block-level tags → newline
+    text = re.sub(r"<br\s*/?>\s*", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p>\s*",       "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<p[^>]*>",      "",   text, flags=re.IGNORECASE)
+    text = re.sub(r"<div[^>]*>",    "",   text, flags=re.IGNORECASE)
+    text = re.sub(r"</div>\s*",     "\n", text, flags=re.IGNORECASE)
+    # 2. Strip all remaining tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # 3. Decode HTML entities (&nbsp; → space, &amp; → &, etc.)
+    text = html.unescape(text)
+    # 4. Replace non-breaking spaces and other Unicode spaces with regular space
+    text = text.replace("\u00a0", " ")   # &nbsp;
+    text = text.replace("\u200b", "")    # zero-width space
+    text = text.replace("\u200c", "")    # zero-width non-joiner
+    text = text.replace("\ufeff", "")    # BOM
+    # 5. Collapse lines: trim each line, drop lines that are only whitespace
+    lines = [line.strip() for line in text.splitlines()]
+    # Collapse runs of more than 2 consecutive blank lines to a single blank line
+    cleaned = []
+    blank_count = 0
+    for line in lines:
+        if line == "":
+            blank_count += 1
+            if blank_count <= 1:
+                cleaned.append(line)
+        else:
+            blank_count = 0
+            cleaned.append(line)
+    return "\n".join(cleaned).strip()
 
 
 def parse_dt(iso_str: str) -> str:

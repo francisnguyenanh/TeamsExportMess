@@ -1,23 +1,28 @@
 {
-  "browser": "edge",
+  "browser": "chrome",
   "channels": [
     {
-      "team_name": "Dự án Alpha",
-      "team_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-      "channel_name": "QA Hỏi Đáp",
-      "channel_id": "19:aabbccdd@thread.tacv2"
-    },
-    {
-      "team_name": "Dự án Beta",
-      "team_id": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
-      "channel_name": "Hỏi đáp kỹ thuật",
-      "channel_id": "19:eeff1122@thread.tacv2"
+      "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
+      "team_name": "VTI_Taizyu",
+      "channel_id": "19:4302f76d716744a4a17be82f46f0a713@thread.tacv2",
+      "channel_name": "案①_Sharepoint共有フォルダ"
     }
   ],
   "export": {
-    "date_from": "2024-01-01",
+    "date_from": "2025-12-23",
     "date_to": "",
     "output_dir": "output",
-    "include_replies": true
+    "include_replies": true,
+    "mark_replies": true,
+    "timezone_offset": 9,
+    "file_naming": "{team}_{channel}_{date}.xlsx",
+    "fields": {
+      "type": true,
+      "datetime": false,
+      "sender": true,
+      "content": true,
+      "message_id": true,
+      "raw_html": false
+    }
   }
 }

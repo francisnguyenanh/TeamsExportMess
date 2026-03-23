@@ -93,6 +93,49 @@
   </div><!-- /.method-cards -->
 </div>
 
+<!-- ── Method C: Manual token ────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">📋 Manual Token (DevTools)</div>
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">
+    Copy a Bearer token from your browser's DevTools and paste it here.
+    Use this as a fallback when SSO or password login is unavailable.
+  </p>
+  <div style="background:#fff7ed;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+    ⚠️ <strong>Important:</strong> You need a token issued for <strong>Microsoft Graph</strong>, not the Teams web app.
+    The token must come from a <code>graph.microsoft.com</code> network request. If the token's audience is wrong, you will get a 401 error.
+  </div>
+  <details id="manual-details" open>
+    <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#4a90e2;user-select:none">
+      ▼ How to get a Graph API token from DevTools
+    </summary>
+    <ol style="margin:10px 0 0 18px;font-size:12px;color:#475569;line-height:2">
+      <li>Open <strong>https://teams.microsoft.com</strong> and sign in.</li>
+      <li>Press <kbd style="background:#f1f5f9;padding:1px 5px;border-radius:4px;border:1px solid #cbd5e1">F12</kbd> → tab <strong>Network</strong> → tick <strong>Preserve log</strong>.</li>
+      <li>In the filter box type exactly: <code>graph.microsoft.com</code> —
+        <strong>you must see requests to that domain</strong>, not <code>teams.microsoft.com</code>.</li>
+      <li>Click any channel or team in Teams sidebar to trigger API calls.</li>
+      <li>Click any request whose URL starts with <code>https://graph.microsoft.com/</code>
+          → tab <strong>Headers</strong> → scroll to <strong>Request Headers</strong>.</li>
+      <li>Find <code>Authorization: Bearer eyJ…</code> and copy <em>only</em> the part after <code>Bearer </code>.</li>
+      <li>Paste below — the validator will confirm the audience is correct before saving.</li>
+    </ol>
+  </details>
+
+  <form method="POST" action="{{ url_for('step1_manual') }}" style="margin-top:16px" id="manual-form">
+    <div class="form-group">
+      <label for="manual-token">Bearer Token</label>
+      <textarea id="manual-token" name="token" rows="4"
+                placeholder="eyJ0eXAiOiJKV1QiLCJub…"
+                style="font-family:monospace;font-size:11px;resize:vertical"
+                oninput="validateManualToken(this)"></textarea>
+      <div id="token-hint" style="font-size:11px;margin-top:5px;color:#64748b"></div>
+    </div>
+    <button type="submit" class="btn btn-primary" id="manual-btn" disabled>
+      💾 Save Token Manually
+    </button>
+  </form>
+</div>
+
 <!-- ── Tip ───────────────────────────────────────────────────────────────── -->
 <div class="info-box">
   💡 <strong>Tip:</strong> Token is valid for approximately 60–90 minutes.
@@ -117,6 +160,92 @@ function showPWSpinner() {
 function togglePasswordForm() {
   const form = document.getElementById('password-form');
   form.classList.toggle('visible');
+}
+
+function validateManualToken(ta) {
+  const val  = ta.value.trim();
+  const hint = document.getElementById('token-hint');
+  const btn  = document.getElementById('manual-btn');
+
+  if (!val) {
+    hint.textContent = '';
+    btn.disabled = true;
+    return;
+  }
+
+  // A JWT has exactly 3 base64url parts separated by dots
+  const parts = val.split('.');
+  if (parts.length < 3) {
+    hint.style.color = '#ef4444';
+    hint.textContent = '⚠️ Looks incomplete — a JWT has 3 dot-separated parts.';
+    btn.disabled = true;
+    return;
+  }
+  if (val.length < 100) {
+    hint.style.color = '#ef4444';
+    hint.textContent = '⚠️ Token too short.';
+    btn.disabled = true;
+    return;
+  }
+
+  // Decode payload and validate audience + expiry
+  const GRAPH_AUDIENCES = [
+    'https://graph.microsoft.com',
+    '00000003-0000-0000-c000-000000000000',
+  ];
+
+  try {
+    const padded  = parts[1] + '==='.slice((parts[1].length + 3) % 4 || 4);
+    const payload = JSON.parse(atob(padded));
+    const aud     = payload.aud || '';
+    const lines   = [];
+    let audienceOk = true;
+
+    // --- Audience check ---
+    if (!GRAPH_AUDIENCES.includes(aud)) {
+      audienceOk = false;
+      hint.style.color = '#ef4444';
+      hint.innerHTML =
+        `❌ <strong>Wrong audience: "${escHtml(aud)}"</strong><br>` +
+        `This token is for the Teams web app, not Microsoft Graph. ` +
+        `In DevTools, make sure you filter by <code>graph.microsoft.com</code> ` +
+        `and copy the token from one of <em>those</em> requests.`;
+      btn.disabled = true;
+      return;
+    }
+
+    lines.push(`✅ Audience: <strong>${escHtml(aud)}</strong> (Graph API — correct!)`);
+
+    // --- Expiry check ---
+    if (payload.exp) {
+      const exp  = new Date(payload.exp * 1000);
+      const mins = Math.round((exp - Date.now()) / 60000);
+      if (mins < 0) {
+        lines.push(`⚠️ Expired ${-mins} min ago (${exp.toLocaleTimeString()}) — please get a fresh token.`);
+        hint.style.color = '#f59e0b';
+      } else {
+        lines.push(`⏱ Expires at ${exp.toLocaleTimeString()} (~${mins} min remaining)`);
+        hint.style.color = '#16a34a';
+      }
+    }
+
+    // --- Scopes ---
+    if (payload.scp) {
+      lines.push(`🔑 Scopes: ${escHtml(payload.scp)}`);
+    }
+
+    hint.innerHTML = lines.join('<br>');
+  } catch {
+    hint.style.color = '#64748b';
+    hint.textContent = 'Could not decode token payload — check it is a valid JWT.';
+  }
+
+  btn.disabled = false;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 </script>
 {% endblock %}
