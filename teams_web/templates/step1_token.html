@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h1 class="page-title">🔑 Step 1 — Get Token</h1>
+<p class="page-subtitle">Obtain a valid Bearer token to access Microsoft Teams data.</p>
+
+<!-- ── Current token status ─────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Current Token Status</div>
+  <div class="token-status-card">
+    {% if token_status.valid %}
+      <span class="token-dot active"></span>
+      <div class="token-info">
+        <h3 style="color:#16a34a">✅ Token Active</h3>
+        <p>
+          Expires at <strong>{{ token_status.expires_at }}</strong>
+          &nbsp;·&nbsp;
+          <strong>~{{ token_status.minutes_remaining }} minutes</strong> remaining
+        </p>
+      </div>
+      <a href="{{ url_for('step2') }}" class="btn btn-success btn-sm" style="margin-left:auto">
+        Continue to Step 2 →
+      </a>
+    {% else %}
+      <span class="token-dot expired"></span>
+      <div class="token-info">
+        <h3 style="color:#dc2626">❌ No valid token</h3>
+        <p>{{ token_status.reason }} — choose a method below to obtain a new token.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Method cards ──────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Obtain New Token</div>
+  <div class="method-cards">
+
+    <!-- Method A: SSO -->
+    <div class="method-card recommended">
+      <h3>🖥️ Windows SSO <span class="badge-recommended">⭐ Recommended</span></h3>
+      <p>
+        Uses your current Windows login session. Works with MFA and
+        Conditional Access. No credentials needed.
+      </p>
+      <div style="margin-top:14px">
+        <form method="POST" action="{{ url_for('step1_sso') }}" id="sso-form">
+          <button type="submit" class="btn btn-primary" id="sso-btn" onclick="showSSOSpinner()">
+            <span id="sso-btn-text">🚀 Get Token via SSO</span>
+            <span id="sso-spinner" class="spinner hidden"></span>
+          </button>
+        </form>
+        <p id="sso-msg" class="hidden" style="margin-top:10px;font-size:12px;color:#64748b">
+          ⏳ Opening browser, please wait… (may take up to 60 s)
+        </p>
+      </div>
+    </div>
+
+    <!-- Method B: Password -->
+    <div class="method-card">
+      <h3>🔐 Email / Password</h3>
+      <p>
+        Fill in your Microsoft Teams email and password. Does not work if
+        MFA or Conditional Access is enabled.
+      </p>
+      <button type="button" class="btn btn-outline btn-sm" style="margin-top:14px"
+              onclick="togglePasswordForm()">
+        ▼ Show Login Form
+      </button>
+
+      <div class="password-form" id="password-form">
+        <form method="POST" action="{{ url_for('step1_password') }}" id="pw-form">
+          <div class="form-group" style="margin-top:14px">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@company.com" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%"
+                  onclick="showPWSpinner()">
+            <span id="pw-btn-text">🔓 Get Token via Password</span>
+            <span id="pw-spinner" class="spinner hidden"></span>
+          </button>
+        </form>
+        <p id="pw-msg" class="hidden" style="margin-top:10px;font-size:12px;color:#64748b">
+          ⏳ Opening browser and logging in… (may take up to 90 s)
+        </p>
+      </div><!-- /.password-form -->
+    </div>
+
+  </div><!-- /.method-cards -->
+</div>
+
+<!-- ── Tip ───────────────────────────────────────────────────────────────── -->
+<div class="info-box">
+  💡 <strong>Tip:</strong> Token is valid for approximately 60–90 minutes.
+  The tool will attempt to auto-refresh the token if it expires during an export.
+  For SSO to work, your PC must be domain-joined and already signed in to Teams.
+</div>
+
+<script>
+function showSSOSpinner() {
+  document.getElementById('sso-btn-text').classList.add('hidden');
+  document.getElementById('sso-spinner').classList.remove('hidden');
+  document.getElementById('sso-btn').disabled = true;
+  document.getElementById('sso-msg').classList.remove('hidden');
+}
+
+function showPWSpinner() {
+  document.getElementById('pw-btn-text').classList.add('hidden');
+  document.getElementById('pw-spinner').classList.remove('hidden');
+  document.getElementById('pw-msg').classList.remove('hidden');
+}
+
+function togglePasswordForm() {
+  const form = document.getElementById('password-form');
+  form.classList.toggle('visible');
+}
+</script>
+{% endblock %}

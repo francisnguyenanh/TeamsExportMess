@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% set exp = config.get('export', {}) %}
+{% set fields = exp.get('fields', {}) %}
+
+<h1 class="page-title">⚙️ Step 3 — Configure Export</h1>
+<p class="page-subtitle">Set the date range, fields, and output options for your export.</p>
+
+<form method="POST" action="{{ url_for('step3_save') }}">
+
+  <!-- ── Date Range ─────────────────────────────────────────────────────── -->
+  <div class="form-section">
+    <div class="form-section-title">📅 Date Range</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="date_from">From</label>
+        <input type="date" id="date_from" name="date_from"
+               value="{{ exp.get('date_from', '') }}" />
+      </div>
+      <div class="form-group">
+        <label for="date_to">To <span style="font-weight:400;text-transform:none">(leave blank = now)</span></label>
+        <input type="date" id="date_to" name="date_to"
+               value="{{ exp.get('date_to', '') }}" />
+      </div>
+    </div>
+    <div class="date-shortcuts">
+      <span style="font-size:11px;color:#64748b;margin-right:4px">Shortcuts:</span>
+      <button type="button" class="btn-shortcut" onclick="setDateRange(7)">Last 7 days</button>
+      <button type="button" class="btn-shortcut" onclick="setDateRange(30)">Last 30 days</button>
+      <button type="button" class="btn-shortcut" onclick="setDateRange(90)">Last 90 days</button>
+      <button type="button" class="btn-shortcut" onclick="setDateRange(0)">All time</button>
+    </div>
+  </div>
+
+  <!-- ── Fields to Export ──────────────────────────────────────────────── -->
+  <div class="form-section">
+    <div class="form-section-title">🗂️ Fields to Export</div>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_type"
+               {% if fields.get('type', True) %}checked{% endif %} />
+        <span>Type <em>(Message / Reply)</em></span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_datetime"
+               {% if fields.get('datetime', True) %}checked{% endif %} />
+        <span>Date &amp; Time &nbsp;
+          <select name="timezone_offset" style="display:inline;width:auto;padding:3px 8px;font-size:12px">
+            {% for tz in range(-12, 13) %}
+            <option value="{{ tz }}" {% if exp.get('timezone_offset', 7) == tz %}selected{% endif %}>
+              UTC{% if tz >= 0 %}+{% endif %}{{ tz }}
+            </option>
+            {% endfor %}
+          </select>
+        </span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_sender"
+               {% if fields.get('sender', True) %}checked{% endif %} />
+        <span>Sender Name</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_content"
+               {% if fields.get('content', True) %}checked{% endif %} />
+        <span>Message Content</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_message_id"
+               {% if fields.get('message_id', True) %}checked{% endif %} />
+        <span>Message ID <em>(thread grouping)</em></span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="field_raw_html"
+               {% if fields.get('raw_html', False) %}checked{% endif %} />
+        <span>Raw HTML content <em>(unstripped)</em></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Thread Options ────────────────────────────────────────────────── -->
+  <div class="form-section">
+    <div class="form-section-title">💬 Thread Options</div>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="checkbox" name="include_replies"
+               {% if exp.get('include_replies', True) %}checked{% endif %} />
+        <span>Include replies in threads</span>
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="mark_replies"
+               {% if exp.get('mark_replies', True) %}checked{% endif %} />
+        <span>Mark replies with indentation / highlight</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Output Options ────────────────────────────────────────────────── -->
+  <div class="form-section">
+    <div class="form-section-title">📁 Output Options</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="output_dir">Output Folder</label>
+        <input type="text" id="output_dir" name="output_dir"
+               value="{{ exp.get('output_dir', 'output') }}" />
+      </div>
+      <div class="form-group">
+        <label for="file_naming">File Naming Pattern</label>
+        <input type="text" id="file_naming" name="file_naming"
+               value="{{ exp.get('file_naming', '{team}_{channel}_{date}.xlsx') }}" />
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-group">
+        <label for="browser">Browser for SSO</label>
+        <select id="browser" name="browser">
+          <option value="edge"   {% if config.get('browser','edge') == 'edge'   %}selected{% endif %}>Microsoft Edge</option>
+          <option value="chrome" {% if config.get('browser','edge') == 'chrome' %}selected{% endif %}>Google Chrome</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <a href="{{ url_for('step2') }}" class="btn btn-outline">← Back</a>
+    <button type="submit" class="btn btn-primary btn-lg">Save &amp; Continue →</button>
+  </div>
+
+</form>
+
+<script>
+function setDateRange(days) {
+  const today = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  document.getElementById('date_to').value = '';
+
+  if (days === 0) {
+    document.getElementById('date_from').value = '';
+  } else {
+    const from = new Date(today);
+    from.setDate(today.getDate() - days);
+    document.getElementById('date_from').value = fmt(from);
+  }
+}
+</script>
+{% endblock %}

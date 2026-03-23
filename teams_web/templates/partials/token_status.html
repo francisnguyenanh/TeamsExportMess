@@ -1,0 +1,9 @@
+{% if token_status.valid %}
+<div class="token-badge token-active">
+  🟢 Active&nbsp;~{{ token_status.minutes_remaining }} min
+</div>
+{% else %}
+<div class="token-badge token-expired">
+  🔴 Expired — <a href="{{ url_for('step1') }}">renew</a>
+</div>
+{% endif %}

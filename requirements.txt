@@ -1,0 +1,5 @@
+# Teams Export Web — Python dependencies
+flask>=3.0
+requests>=2.31
+openpyxl>=3.1
+playwright>=1.40

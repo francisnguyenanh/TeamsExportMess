@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h1 class="page-title">📋 Step 2 — Select Channels</h1>
+<p class="page-subtitle">Browse all Teams and Channels you have access to, then pick which ones to export.</p>
+
+<!-- ── Toolbar ───────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <button class="btn btn-outline" id="refresh-btn" onclick="refreshChannels()">
+    <span id="refresh-text">🔄 Refresh Channel List</span>
+    <span id="refresh-spinner" class="spinner hidden"></span>
+  </button>
+  <button class="btn btn-outline btn-sm" onclick="selectAll(true)">✅ Select All</button>
+  <button class="btn btn-outline btn-sm" onclick="selectAll(false)">☐ Deselect All</button>
+  <span class="selection-count" id="sel-count">
+    {{ selected_ids | length }} selected
+  </span>
+</div>
+
+<!-- ── Token warning ─────────────────────────────────────────────────────── -->
+{% if not token_status.valid %}
+<div class="info-box" style="background:#fff7ed;border-color:#fde68a;color:#92400e">
+  ⚠️ Token is expired or missing.
+  <a href="{{ url_for('step1') }}" style="color:#92400e;font-weight:700">Go to Step 1</a>
+  to get a new token before refreshing channels.
+</div>
+{% endif %}
+
+<!-- ── Channel tree ──────────────────────────────────────────────────────── -->
+<div id="tree-wrap">
+  {% if teams %}
+    <div class="channel-tree" id="channel-tree">
+      {% for team in teams %}
+      <div class="team-group">
+        <div class="team-header" onclick="toggleTeam(this)">
+          🏢 <strong>{{ team.team_name }}</strong>
+          <span style="color:#64748b;font-weight:400;margin-left:6px;font-size:12px">
+            ({{ team.channels | length }} channels)
+          </span>
+          <span class="team-toggle">▼</span>
+        </div>
+        <div class="channel-list">
+          {% for ch in team.channels %}
+          {% set ck = team.team_id ~ '_' ~ ch.channel_id %}
+          {% set es = export_state.get(ck, {}) %}
+          <label class="channel-item">
+            <input type="checkbox"
+                   class="ch-check"
+                   data-team-id="{{ team.team_id }}"
+                   data-team-name="{{ team.team_name }}"
+                   data-channel-id="{{ ch.channel_id }}"
+                   data-channel-name="{{ ch.channel_name }}"
+                   {% if ck in selected_ids %}checked{% endif %}
+                   onchange="updateCount()" />
+            <span class="channel-name">📢 {{ ch.channel_name }}</span>
+            {% if es.last_exported %}
+            <span class="channel-state exported">
+              ✅ {{ es.last_exported[:10] }}
+              {% if es.row_count %}· {{ es.row_count }} rows{% endif %}
+            </span>
+            {% else %}
+            <span class="channel-state never">never exported</span>
+            {% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div id="empty-state" class="channels-empty">
+      <div class="empty-icon">📭</div>
+      <h3>No channels loaded yet</h3>
+      <p>Click <strong>Refresh Channel List</strong> to fetch all Teams and Channels you have access to.</p>
+    </div>
+  {% endif %}
+</div>
+
+<div id="refresh-error" class="flash flash-error hidden" style="margin-top:12px"></div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<div class="btn-row">
+  <a href="{{ url_for('step1') }}" class="btn btn-outline">← Back</a>
+  <button class="btn btn-primary btn-lg" id="save-btn" onclick="saveSelection()">
+    <span id="save-text">Save Selection &amp; Continue →</span>
+    <span id="save-spinner" class="spinner hidden"></span>
+  </button>
+</div>
+
+<script>
+/* ── helpers ────────────────────────────────────────────────────────────── */
+function updateCount() {
+  const n = document.querySelectorAll('.ch-check:checked').length;
+  document.getElementById('sel-count').textContent = n + ' selected';
+}
+
+function selectAll(checked) {
+  document.querySelectorAll('.ch-check').forEach(cb => cb.checked = checked);
+  updateCount();
+}
+
+function toggleTeam(header) {
+  const list = header.nextElementSibling;
+  const arrow = header.querySelector('.team-toggle');
+  const hidden = list.style.display === 'none';
+  list.style.display = hidden ? '' : 'none';
+  arrow.textContent = hidden ? '▼' : '▶';
+}
+
+/* ── refresh channels (AJAX) ─────────────────────────────────────────────── */
+async function refreshChannels() {
+  const btn  = document.getElementById('refresh-btn');
+  const txt  = document.getElementById('refresh-text');
+  const spin = document.getElementById('refresh-spinner');
+  const err  = document.getElementById('refresh-error');
+
+  btn.disabled = true;
+  txt.classList.add('hidden');
+  spin.classList.remove('hidden');
+  err.classList.add('hidden');
+
+  try {
+    const resp = await fetch('{{ url_for("step2_refresh") }}', { method: 'POST' });
+    const data = await resp.json();
+
+    if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
+
+    const tree = document.getElementById('channel-tree') || document.createElement('div');
+    tree.id = 'channel-tree';
+    tree.className = 'channel-tree';
+
+    // Build tree from response
+    const selected = getSelectedIds();
+    tree.innerHTML = '';
+    data.teams.forEach(team => {
+      const group = document.createElement('div');
+      group.className = 'team-group';
+      group.innerHTML = `
+        <div class="team-header" onclick="toggleTeam(this)">
+          🏢 <strong>${escHtml(team.team_name)}</strong>
+          <span style="color:#64748b;font-weight:400;margin-left:6px;font-size:12px">
+            (${team.channels.length} channels)
+          </span>
+          <span class="team-toggle">▼</span>
+        </div>
+        <div class="channel-list">
+          ${team.channels.map(ch => {
+            const ck = team.team_id + '_' + ch.channel_id;
+            const chk = selected.has(ck) ? 'checked' : '';
+            return `
+              <label class="channel-item">
+                <input type="checkbox" class="ch-check" ${chk}
+                  data-team-id="${escHtml(team.team_id)}"
+                  data-team-name="${escHtml(team.team_name)}"
+                  data-channel-id="${escHtml(ch.channel_id)}"
+                  data-channel-name="${escHtml(ch.channel_name)}"
+                  onchange="updateCount()" />
+                <span class="channel-name">📢 ${escHtml(ch.channel_name)}</span>
+                <span class="channel-state never">never exported</span>
+              </label>`;
+          }).join('')}
+        </div>`;
+      tree.appendChild(group);
+    });
+
+    const wrap = document.getElementById('tree-wrap');
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.remove();
+    const old = document.getElementById('channel-tree');
+    if (old) old.replaceWith(tree); else wrap.appendChild(tree);
+
+    updateCount();
+  } catch (e) {
+    err.textContent = '❌ ' + e.message;
+    err.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    txt.classList.remove('hidden');
+    spin.classList.add('hidden');
+  }
+}
+
+/* ── save selection ──────────────────────────────────────────────────────── */
+async function saveSelection() {
+  const channels = [];
+  document.querySelectorAll('.ch-check:checked').forEach(cb => {
+    channels.push({
+      team_id:      cb.dataset.teamId,
+      team_name:    cb.dataset.teamName,
+      channel_id:   cb.dataset.channelId,
+      channel_name: cb.dataset.channelName,
+    });
+  });
+
+  const btn  = document.getElementById('save-btn');
+  const txt  = document.getElementById('save-text');
+  const spin = document.getElementById('save-spinner');
+
+  btn.disabled = true;
+  txt.classList.add('hidden');
+  spin.classList.remove('hidden');
+
+  try {
+    const resp = await fetch('{{ url_for("step2_save") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channels }),
+    });
+    const data = await resp.json();
+    if (data.status === 'ok') {
+      window.location.href = '{{ url_for("step3") }}';
+    } else {
+      throw new Error(data.message || 'Save failed');
+    }
+  } catch (e) {
+    alert('Error saving: ' + e.message);
+    btn.disabled = false;
+    txt.classList.remove('hidden');
+    spin.classList.add('hidden');
+  }
+}
+
+function getSelectedIds() {
+  const s = new Set();
+  document.querySelectorAll('.ch-check:checked').forEach(cb => {
+    s.add(cb.dataset.teamId + '_' + cb.dataset.channelId);
+  });
+  return s;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+{% endblock %}

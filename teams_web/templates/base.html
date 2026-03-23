@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teams Export Tool</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+<div class="layout">
+
+  <!-- ─── Sidebar ──────────────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">📤</span>
+      <span>Teams Export</span>
+    </div>
+
+    {% include 'partials/token_status.html' %}
+
+    <ul class="steps-nav">
+      {% set nav = [
+        (1, 'step1', 'Get Token',        '🔑'),
+        (2, 'step2', 'Select Channels',  '📋'),
+        (3, 'step3', 'Configure Export', '⚙️'),
+        (4, 'step4', 'Export & Download','⬇️'),
+      ] %}
+      {% for num, endpoint, label, icon in nav %}
+      <li class="step-item {% if num == current_step %}active{% elif num < current_step %}done{% endif %}">
+        <a href="{{ url_for(endpoint) }}" class="step-link">
+          <span class="step-icon">
+            {% if num < current_step %}✅
+            {% elif num == current_step %}🔵
+            {% else %}⚪{% endif %}
+          </span>
+          <span class="step-info">
+            <span class="step-num">Step {{ num }}</span>
+            <span class="step-label">{{ label }}</span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <!-- ─── Main content ─────────────────────────────────────────────────────── -->
+  <main class="content">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+</div>
+</body>
+</html>
