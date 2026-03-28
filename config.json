@@ -1,15 +1,8 @@
 {
   "browser": "chrome",
-  "channels": [
-    {
-      "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
-      "team_name": "VTI_Taizyu",
-      "channel_id": "19:4302f76d716744a4a17be82f46f0a713@thread.tacv2",
-      "channel_name": "案①_Sharepoint共有フォルダ"
-    }
-  ],
+  "channels": [],
   "export": {
-    "date_from": "2025-12-23",
+    "date_from": "2026-02-25",
     "date_to": "",
     "output_dir": "output",
     "include_replies": true,
@@ -18,11 +11,18 @@
     "file_naming": "{team}_{channel}_{date}.xlsx",
     "fields": {
       "type": true,
-      "datetime": false,
+      "datetime": true,
       "sender": true,
       "content": true,
       "message_id": true,
       "raw_html": false
     }
-  }
+  },
+  "chats": [
+    {
+      "chat_id": "19:ecca69f63afe4c6187a68e32bc939198@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI]_09_XUD109_回数マスタ"
+    }
+  ]
 }

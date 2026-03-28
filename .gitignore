@@ -1,2 +1,18 @@
 /.venv
-/__pycache__
+__pycache__/
+*.pyc
+
+# Runtime / sensitive files
+token.json
+teams_token.json
+chatsvc_token.json
+export_state.json
+pw_chats.json
+all_channels.json
+config.json
+
+# Playwright session data
+.pw_session/
+
+# Output files
+output/

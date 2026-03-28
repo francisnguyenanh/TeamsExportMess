@@ -1,44 +1,68 @@
 [
   {
-    "team_name": "vti.com.vn",
-    "team_id": "347a5152-a9f5-4e56-b5d3-80ab96ee62be",
+    "team_name": "MC199",
+    "team_id": "6c45b600-d578-4f53-8948-e3c32bd56af8",
+    "channel_name": "Announcements (ALL MEICOM) 📢",
+    "channel_id": "19:517b0fa1005b42f198a8a3969ac7cd82@thread.tacv2"
+  },
+  {
+    "team_name": "MC199",
+    "team_id": "6c45b600-d578-4f53-8948-e3c32bd56af8",
+    "channel_name": "Comtor ＆ Những người bạn",
+    "channel_id": "19:6204fc0285814df2b747927244cb09f4@thread.tacv2"
+  },
+  {
+    "team_name": "MC199",
+    "team_id": "6c45b600-d578-4f53-8948-e3c32bd56af8",
+    "channel_name": "KOGUMA - MTG channel",
+    "channel_id": "19:cd26e883662e4cebabc59d0ac5070791@thread.tacv2"
+  },
+  {
+    "team_name": "MC199",
+    "team_id": "6c45b600-d578-4f53-8948-e3c32bd56af8",
     "channel_name": "General",
-    "channel_id": "19:5eb6f13a3a2b4b41a306eb567da9d566@thread.skype"
+    "channel_id": "19:rk9_A3s09nBqO9xh2idN4O1sVLD2Z-Sv8ESUUlt6rkQ1@thread.tacv2"
   },
   {
-    "team_name": "VTINagoya",
-    "team_id": "ab6e1c6b-c9d3-45e8-8879-924d32da02fb",
-    "channel_name": "G7 nội bộ họp định kỳ",
-    "channel_id": "19:42fabc7c95f045419ef34f3c5c378ff9@thread.tacv2"
+    "team_name": "MCOR_抜き取り検査システム",
+    "team_id": "aba706a9-a444-4abe-b0da-ffbde5ef2afc",
+    "channel_name": "要件定義",
+    "channel_id": "19:a439c08c1d1642fdbd57f8892892573f@thread.tacv2"
   },
   {
-    "team_name": "VTINagoya",
-    "team_id": "ab6e1c6b-c9d3-45e8-8879-924d32da02fb",
+    "team_name": "MCOR_抜き取り検査システム",
+    "team_id": "aba706a9-a444-4abe-b0da-ffbde5ef2afc",
+    "channel_name": "連絡",
+    "channel_id": "19:b6451354ea3844c6b0732c06875f481e@thread.tacv2"
+  },
+  {
+    "team_name": "MCOR_抜き取り検査システム",
+    "team_id": "aba706a9-a444-4abe-b0da-ffbde5ef2afc",
+    "channel_name": "進捗状況",
+    "channel_id": "19:bb5689aa91c04daabb416fb11e027300@thread.tacv2"
+  },
+  {
+    "team_name": "MCOR_抜き取り検査システム",
+    "team_id": "aba706a9-a444-4abe-b0da-ffbde5ef2afc",
+    "channel_name": "MoM",
+    "channel_id": "19:df06f0e30af14619b65e941638c3781a@thread.tacv2"
+  },
+  {
+    "team_name": "MCOR_抜き取り検査システム",
+    "team_id": "aba706a9-a444-4abe-b0da-ffbde5ef2afc",
     "channel_name": "General",
-    "channel_id": "19:kzGCTuBwwi2RbTUBQYEPaDqBHLRbtNpYl3Sl2i_dtAo1@thread.tacv2"
+    "channel_id": "19:VVyc22gtZxbVNIvIV_A8MfAtL7yKDEa5sKEgwqxIhaY1@thread.tacv2"
   },
   {
-    "team_name": "VTI_Taizyu",
-    "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
-    "channel_name": "案①_Sharepoint共有フォルダ",
-    "channel_id": "19:4302f76d716744a4a17be82f46f0a713@thread.tacv2"
+    "team_name": "NVI - Success Together!",
+    "team_id": "0149747a-80ce-40b7-a715-961a5dfa9f66",
+    "channel_name": "NVI_Workshop",
+    "channel_id": "19:d9309b2306c34849812f557f6665722e@thread.tacv2"
   },
   {
-    "team_name": "VTI_Taizyu",
-    "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
-    "channel_name": "案②_年末調整OCRシステム",
-    "channel_id": "19:5e4d145db685486a8f941bcbf6771ae1@thread.tacv2"
-  },
-  {
-    "team_name": "VTI_Taizyu",
-    "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
-    "channel_name": "案③_HP Renewal",
-    "channel_id": "19:653b67ddeaed4e7bbae1aa975ba69365@thread.tacv2"
-  },
-  {
-    "team_name": "VTI_Taizyu",
-    "team_id": "9e0c5e3b-451e-499b-be4c-e8e8d590ec1a",
-    "channel_name": "General",
-    "channel_id": "19:Wk_r58ooKF85iuZUHoYdEokQSfyd5P87V4wYqCT5IK01@thread.tacv2"
+    "team_name": "NVI - Success Together!",
+    "team_id": "0149747a-80ce-40b7-a715-961a5dfa9f66",
+    "channel_name": "NVI.NEWS",
+    "channel_id": "19:m8iR50CnANnopkwkRpIZfXaNH1rAnfGDpt2G3F9p8es1@thread.tacv2"
   }
 ]

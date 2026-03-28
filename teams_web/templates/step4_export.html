@@ -2,6 +2,7 @@
 {% block content %}
 
 {% set channels = config.get('channels', []) %}
+{% set chats    = config.get('chats', []) %}
 {% set exp      = config.get('export', {}) %}
 
 <h1 class="page-title">⬇️ Step 4 — Export &amp; Download</h1>
@@ -26,9 +27,17 @@
         {% if channels %}
           {{ channels | length }} channel(s) selected
         {% else %}
-          <span style="color:#ef4444">⚠️ No channels selected —
-            <a href="{{ url_for('step2') }}">go to Step 2</a>
-          </span>
+          <span style="color:#94a3b8">0 channels</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Group Chats:</span>
+      <span>
+        {% if chats %}
+          {{ chats | length }} chat(s) selected
+        {% else %}
+          <span style="color:#94a3b8">0 chats</span>
         {% endif %}
       </span>
     </div>
@@ -54,7 +63,7 @@
   </div>
 
   {% if channels %}
-  <ul style="margin:0 0 16px 18px;font-size:12px;color:#475569;line-height:1.8">
+  <ul style="margin:0 0 8px 18px;font-size:12px;color:#475569;line-height:1.8">
     {% for ch in channels %}
     <li>
       📂 <strong>{{ ch.team_name }}</strong> / #{{ ch.channel_name }}
@@ -67,9 +76,30 @@
   </ul>
   {% endif %}
 
+  {% if chats %}
+  <ul style="margin:0 0 16px 18px;font-size:12px;color:#475569;line-height:1.8">
+    {% for chat in chats %}
+    <li>
+      💬 <strong>{{ chat.display_name }}</strong>
+      <span style="color:#8b5cf6;font-size:10px">[{{ chat.chat_type }}]</span>
+      {% set ck = 'chat_' ~ chat.chat_id %}
+      {% if export_state.get(ck, {}).get('last_exported') %}
+      <span style="color:#64748b"> — last exported {{ export_state[ck].last_exported[:10] }}, {{ export_state[ck].get('row_count', '?') }} rows</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if not channels and not chats %}
+  <p style="color:#ef4444;font-size:13px">⚠️ No channels or chats selected —
+    <a href="{{ url_for('step2') }}">go to Step 2</a>
+  </p>
+  {% endif %}
+
   <button class="btn btn-success btn-lg" id="start-btn"
           onclick="startExport()"
-          {% if not channels or not token_status.valid %}disabled{% endif %}>
+          {% if (not channels and not chats) or not token_status.valid %}disabled{% endif %}>
     🚀 Start Export
   </button>
 </div>

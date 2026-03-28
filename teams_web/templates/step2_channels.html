@@ -78,6 +78,56 @@
 
 <div id="refresh-error" class="flash flash-error hidden" style="margin-top:12px"></div>
 
+<!-- ── Group Chats ──────────────────────────────────────────────────────── -->
+<div class="card" style="margin-top:16px">
+  <div class="card-title">💬 Group Chats</div>
+  <p style="font-size:13px;color:#475569;margin-bottom:10px">
+    Chọn các group chat / 1:1 chat muốn export. Nhấn <strong>Refresh</strong> ở trên để cập nhật danh sách.
+  </p>
+
+  <!-- Playwright Scrape Button -->
+  <div style="margin-bottom:12px;padding:10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
+    <p style="font-size:12px;color:#0369a1;margin:0 0 8px 0">
+      💡 Nếu Graph API bị lỗi <code>403 / Chat.Read</code>, dùng nút bên dưới để mở Teams trong trình duyệt
+      và lấy danh sách chat trực tiếp (không cần quyền Graph API).
+    </p>
+    <button class="btn btn-outline" id="pw-scrape-btn" onclick="pwScrapeChats()" style="background:#0ea5e9;color:#fff;border-color:#0ea5e9;font-size:13px">
+      <span id="pw-scrape-text">🔍 Scrape Chats (Playwright)</span>
+      <span id="pw-scrape-spinner" class="spinner hidden"></span>
+    </button>
+    <div id="pw-scrape-log" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto;background:#1e293b;color:#e2e8f0;border-radius:6px;padding:8px 12px;font-size:11px;font-family:monospace;white-space:pre-wrap"></div>
+  </div>
+
+  <div id="chat-list">
+    {% if saved_chats %}
+      {% for chat in saved_chats %}
+      <label class="channel-item" style="border-left:3px solid #8b5cf6;padding-left:12px">
+        <input type="checkbox"
+               class="chat-check"
+               data-chat-id="{{ chat.chat_id }}"
+               data-chat-type="{{ chat.chat_type }}"
+               data-display-name="{{ chat.display_name }}"
+               {% if chat.chat_id in selected_chat_ids %}checked{% endif %}
+               onchange="updateCount()" />
+        <span class="channel-name">
+          {% if chat.chat_type == 'group' %}👥{% else %}👤{% endif %}
+          {{ chat.display_name }}
+        </span>
+        {% if chat.member_count %}
+        <span style="font-size:11px;color:#64748b;margin-left:6px">
+          ({{ chat.member_count }} members)
+        </span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    {% else %}
+      <div style="color:#94a3b8;font-size:13px;padding:10px 0">
+        📭 Chưa có chat nào. Nhấn <strong>Refresh Channel List</strong> để tải.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- ── Footer ─────────────────────────────────────────────────────────────── -->
 <div class="btn-row">
   <a href="{{ url_for('step1') }}" class="btn btn-outline">← Back</a>
@@ -90,12 +140,16 @@
 <script>
 /* ── helpers ────────────────────────────────────────────────────────────── */
 function updateCount() {
-  const n = document.querySelectorAll('.ch-check:checked').length;
-  document.getElementById('sel-count').textContent = n + ' selected';
+  const nCh   = document.querySelectorAll('.ch-check:checked').length;
+  const nChat = document.querySelectorAll('.chat-check:checked').length;
+  const parts = [];
+  if (nCh)   parts.push(nCh + ' channels');
+  if (nChat) parts.push(nChat + ' chats');
+  document.getElementById('sel-count').textContent = parts.length ? parts.join(' + ') + ' selected' : '0 selected';
 }
 
 function selectAll(checked) {
-  document.querySelectorAll('.ch-check').forEach(cb => cb.checked = checked);
+  document.querySelectorAll('.ch-check, .chat-check').forEach(cb => cb.checked = checked);
   updateCount();
 }
 
@@ -124,6 +178,38 @@ async function refreshChannels() {
     const data = await resp.json();
 
     if (data.status !== 'ok') throw new Error(data.message || 'Unknown error');
+
+    // ── Hiển thị token info nếu có ─────────────────────────────────────
+    if (data.token_audience) {
+      const isGraph = data.token_audience.includes('graph.microsoft.com')
+                   || data.token_audience.includes('00000003-0000-0000-c000-000000000000');
+      const infoEl = document.createElement('div');
+      infoEl.style.cssText = isGraph
+        ? 'background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#166534'
+        : 'background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#854d0e';
+      infoEl.innerHTML = isGraph
+        ? `✅ Token audience: <code>${escHtml(data.token_audience)}</code> — Graph API ✓`
+        : `⚠️ Token audience: <code>${escHtml(data.token_audience)}</code> — <strong>Không phải Graph API!</strong>
+           Channels/Chats có thể không load được. Hãy <a href="/step1" style="color:#854d0e;font-weight:700">lấy lại token</a> bằng Manual Token (DevTools) hoặc Graph Explorer.`;
+      const wrap = document.getElementById('tree-wrap');
+      const existingInfo = wrap.querySelector('.token-info-banner');
+      if (existingInfo) existingInfo.remove();
+      infoEl.className = 'token-info-banner';
+      wrap.prepend(infoEl);
+    }
+
+    // ── Hiển thị team_errors nếu có ─────────────────────────────────────
+    if (data.team_errors && data.team_errors.length > 0) {
+      const teamErrEl = document.createElement('div');
+      teamErrEl.style.cssText = 'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#991b1b';
+      teamErrEl.innerHTML = `
+        ⚠️ <strong>Không lấy được danh sách Teams/Channels:</strong><br>
+        ${data.team_errors.map(e => escHtml(e)).join('<br>')}
+        <br><br>💡 <strong>Tip:</strong> Chats vẫn có thể load bình thường phía dưới.
+      `;
+      const wrap = document.getElementById('tree-wrap');
+      wrap.prepend(teamErrEl);
+    }
 
     const tree = document.getElementById('channel-tree') || document.createElement('div');
     tree.id = 'channel-tree';
@@ -169,6 +255,46 @@ async function refreshChannels() {
     const old = document.getElementById('channel-tree');
     if (old) old.replaceWith(tree); else wrap.appendChild(tree);
 
+    // ── Render Group Chats ──────────────────────────────────────────────
+    const chatList = document.getElementById('chat-list');
+    if (data.chats && data.chats.length > 0) {
+      const selectedChats = new Set();
+      document.querySelectorAll('.chat-check:checked').forEach(cb => {
+        selectedChats.add(cb.dataset.chatId);
+      });
+
+      chatList.innerHTML = data.chats.map(chat => {
+        const icon = chat.chat_type === 'group' ? '👥' : '👤';
+        const chk  = selectedChats.has(chat.chat_id) ? 'checked' : '';
+        const memberInfo = chat.member_count
+          ? `<span style="font-size:11px;color:#64748b;margin-left:6px">(${chat.member_count} members)</span>`
+          : '';
+        return `
+          <label class="channel-item" style="border-left:3px solid #8b5cf6;padding-left:12px">
+            <input type="checkbox" class="chat-check" ${chk}
+              data-chat-id="${escHtml(chat.chat_id)}"
+              data-chat-type="${escHtml(chat.chat_type)}"
+              data-display-name="${escHtml(chat.display_name)}"
+              onchange="updateCount()" />
+            <span class="channel-name">${icon} ${escHtml(chat.display_name)}</span>
+            ${memberInfo}
+          </label>`;
+      }).join('');
+    } else {
+      chatList.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:10px 0">📭 Không tìm thấy group chat nào.</div>';
+    }
+
+    // Hiển thị lỗi chat nếu có
+    if (data.chat_errors && data.chat_errors.length > 0 && (!data.chats || data.chats.length === 0)) {
+      chatList.innerHTML += `
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#991b1b">
+          ⚠️ <strong>Không lấy được danh sách chat:</strong><br>
+          ${data.chat_errors.map(e => escHtml(e)).join('<br>')}
+          <br><br>💡 Token có thể thiếu quyền <code>Chat.Read</code>.
+          Thử lấy token lại bằng <strong>Device Code Flow</strong> ở Step 1.
+        </div>`;
+    }
+
     updateCount();
   } catch (e) {
     err.textContent = '❌ ' + e.message;
@@ -192,6 +318,15 @@ async function saveSelection() {
     });
   });
 
+  const chats = [];
+  document.querySelectorAll('.chat-check:checked').forEach(cb => {
+    chats.push({
+      chat_id:      cb.dataset.chatId,
+      chat_type:    cb.dataset.chatType,
+      display_name: cb.dataset.displayName,
+    });
+  });
+
   const btn  = document.getElementById('save-btn');
   const txt  = document.getElementById('save-text');
   const spin = document.getElementById('save-spinner');
@@ -204,7 +339,7 @@ async function saveSelection() {
     const resp = await fetch('{{ url_for("step2_save") }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channels }),
+      body: JSON.stringify({ channels, chats }),
     });
     const data = await resp.json();
     if (data.status === 'ok') {
@@ -234,6 +369,86 @@ function escHtml(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/* ── Playwright Chat Scrape ──────────────────────────────────────────────── */
+async function pwScrapeChats() {
+  const btn  = document.getElementById('pw-scrape-btn');
+  const txt  = document.getElementById('pw-scrape-text');
+  const spin = document.getElementById('pw-scrape-spinner');
+  const logEl = document.getElementById('pw-scrape-log');
+
+  btn.disabled = true;
+  txt.classList.add('hidden');
+  spin.classList.remove('hidden');
+  logEl.style.display = 'block';
+  logEl.textContent = '🌐 Đang khởi động Playwright…\n';
+
+  try {
+    // Start scrape job
+    const startResp = await fetch('/step2/pw_scrape_chats', { method: 'POST' });
+    const startData = await startResp.json();
+    const jobId = startData.job_id;
+
+    // Poll for results
+    let lastLogLen = 0;
+    let maxPoll = 120; // 120 * 2s = 240s max
+    for (let i = 0; i < maxPoll; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const pollResp = await fetch(`/step2/pw_scrape_chats/poll/${jobId}`);
+      const pollData = await pollResp.json();
+
+      // Update log
+      if (pollData.log && pollData.log.length > lastLogLen) {
+        for (let j = lastLogLen; j < pollData.log.length; j++) {
+          logEl.textContent += pollData.log[j] + '\n';
+        }
+        lastLogLen = pollData.log.length;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      if (pollData.status === 'done') {
+        // Render chats
+        const chats = pollData.chats || [];
+        const chatList = document.getElementById('chat-list');
+        if (chats.length > 0) {
+          chatList.innerHTML = chats.map(chat => {
+            const icon = chat.chat_type === 'group' ? '👥' : '👤';
+            const memberInfo = chat.member_count
+              ? `<span style="font-size:11px;color:#64748b;margin-left:6px">(${chat.member_count} members)</span>`
+              : '';
+            const source = chat._source
+              ? `<span style="font-size:10px;color:#94a3b8;margin-left:4px">[${chat._source}]</span>`
+              : '';
+            return `
+              <label class="channel-item" style="border-left:3px solid #8b5cf6;padding-left:12px">
+                <input type="checkbox" class="chat-check" checked
+                  data-chat-id="${escHtml(chat.chat_id)}"
+                  data-chat-type="${escHtml(chat.chat_type)}"
+                  data-display-name="${escHtml(chat.display_name)}"
+                  onchange="updateCount()" />
+                <span class="channel-name">${icon} ${escHtml(chat.display_name)}</span>
+                ${memberInfo}${source}
+              </label>`;
+          }).join('');
+          updateCount();
+          logEl.textContent += `\n✅ Hiển thị ${chats.length} chats trên trang!\n`;
+        } else {
+          logEl.textContent += '\n⚠️ Không tìm thấy chat nào.\n';
+        }
+        break;
+      } else if (pollData.status === 'error') {
+        logEl.textContent += `\n❌ Lỗi: ${pollData.error}\n`;
+        break;
+      }
+    }
+  } catch (e) {
+    logEl.textContent += `\n❌ Error: ${e.message}\n`;
+  } finally {
+    btn.disabled = false;
+    txt.classList.remove('hidden');
+    spin.classList.add('hidden');
+  }
 }
 </script>
 {% endblock %}

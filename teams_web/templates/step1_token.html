@@ -36,6 +36,32 @@
   <div class="card-title">Obtain New Token</div>
   <div class="method-cards">
 
+    <!-- Method ★: Playwright Browser Login (NEW - easiest) -->
+    <div class="method-card recommended" style="border:2px solid #16a34a;background:#f0fdf4">
+      <h3>🟢 Playwright Browser Login <span class="badge-recommended" style="background:#16a34a">⭐ Dễ nhất</span></h3>
+      <p style="font-size:13px">
+        Mở trình duyệt Chromium riêng (không phải Chrome) → bạn đăng nhập Teams 1 lần
+        → tự động bắt token. <strong>Session được lưu</strong> cho lần sau (không cần login lại).
+      </p>
+      <div style="background:#dcfce7;border-radius:6px;padding:8px 12px;margin:10px 0;font-size:12px;color:#166534">
+        ✅ <strong>Không ảnh hưởng Chrome/Edge đang dùng</strong> — mở cửa sổ trình duyệt riêng biệt.
+        Đăng nhập (<strong>locntp@fpt.com</strong>) trên cửa sổ vừa mở → token tự động được lấy.
+      </div>
+      <div style="background:#eff6ff;border-radius:6px;padding:8px 12px;margin:6px 0;font-size:12px;color:#1e40af">
+        💡 Lần đầu cần đăng nhập. Các lần sau session đã lưu → tự SSO → nhanh hơn.
+      </div>
+      <div style="margin-top:10px">
+        <button type="button" class="btn btn-primary" id="pf-start-btn"
+                style="background:#16a34a;border-color:#16a34a;width:100%;max-width:400px"
+                onclick="startCDP()">
+          <span id="pf-btn-text">🚀 Mở trình duyệt & Lấy Token</span>
+          <span id="pf-spinner" class="spinner hidden"></span>
+        </button>
+        <div id="pf-log" style="display:none;margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;font-family:monospace;max-height:200px;overflow-y:auto;text-align:left;color:#475569"></div>
+        <div id="pf-status" style="margin-top:8px;font-size:13px;color:#64748b;text-align:center"></div>
+      </div>
+    </div>
+
     <!-- Method A: SSO -->
     <div class="method-card recommended">
       <h3>🖥️ Windows SSO <span class="badge-recommended">⭐ Recommended</span></h3>
@@ -93,7 +119,55 @@
   </div><!-- /.method-cards -->
 </div>
 
-<!-- ── Method C: Manual token ────────────────────────────────────────────── -->
+<!-- ── Method C: Device Code Flow (MSAL) ────────────────────────────────── -->
+<div class="card" style="border:2px solid #2563eb">
+  <div class="card-title" style="color:#2563eb">📱 Device Code Flow <span class="badge-recommended" style="background:#2563eb">✅ Khuyên dùng khi không thấy token trên DevTools</span></div>
+  <p style="font-size:13px;color:#475569;margin-bottom:10px">
+    Cách xác thực <strong>chính thống qua MSAL</strong> — không cần browser tricks, không bị chặn bởi
+    MFA hay Conditional Access. Bạn chỉ cần mở URL trên <em>bất kỳ thiết bị nào</em> và nhập mã.
+  </p>
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1e40af">
+    💡 Teams Web hiện tại <strong>không còn gọi Graph API trực tiếp</strong> từ browser → không thể lấy token qua DevTools / Network tab nữa. Hãy dùng cách này thay thế.
+  </div>
+
+  <!-- Email để detect tenant ID chính xác -->
+  <div style="margin-bottom:12px">
+    <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px">
+      📧 Email công ty (tùy chọn — giúp detect đúng tenant):
+    </label>
+    <input type="email" id="dc-email" placeholder="you@company.com"
+           style="width:100%;max-width:360px;padding:7px 12px;border:1px solid #d1d5db;
+                  border-radius:6px;font-size:13px" />
+  </div>
+
+  <button type="button" class="btn btn-primary" id="dc-start-btn" onclick="startDeviceCode()">
+    📱 Bắt đầu đăng nhập bằng Device Code
+  </button>
+
+  <!-- Panel hiển thị mã sau khi bấm nút -->
+  <div id="dc-panel" style="display:none;margin-top:16px">
+    <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:10px;padding:16px 20px;text-align:center">
+      <p style="font-size:13px;color:#374151;margin-bottom:8px">
+        1. Mở trình duyệt bất kỳ và truy cập:
+      </p>
+      <a id="dc-url" href="#" target="_blank" style="font-size:15px;font-weight:700;color:#2563eb">
+        https://microsoft.com/devicelogin
+      </a>
+      <p style="font-size:13px;color:#374151;margin:12px 0 6px">2. Nhập mã xác nhận:</p>
+      <div id="dc-code" style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e293b;
+                                background:#fff;border:2px solid #16a34a;border-radius:8px;
+                                padding:10px 20px;display:inline-block;font-family:monospace">
+        ···
+      </div>
+      <p style="font-size:12px;color:#64748b;margin-top:10px">
+        ⏳ Đang thử kết nối với tenant… trang sẽ tự chuyển khi xác thực xong.
+      </p>
+    </div>
+    <div id="dc-status" style="margin-top:10px;font-size:13px;color:#64748b;text-align:center"></div>
+  </div>
+</div>
+
+<!-- ── Method D: Manual token ────────────────────────────────────────────── -->
 <div class="card">
   <div class="card-title">📋 Manual Token (DevTools)</div>
   <p style="font-size:13px;color:#475569;margin-bottom:14px">
@@ -136,6 +210,49 @@
   </form>
 </div>
 
+<!-- ── Method D: Lấy từ Chrome đang mở (CDP) ─────────────────────────────── -->
+<div class="card">
+  <div class="card-title">🔗 Lấy Token từ Chrome đang mở (CDP)</div>
+  <p style="font-size:13px;color:#475569;margin-bottom:14px">
+    Kết nối vào Chrome đang mở sẵn Teams. Không cần nhập tay — tự động bắt token từ request Graph API.
+  </p>
+  <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#713f12">
+    ⚠️ <strong>Yêu cầu:</strong> Chrome phải được khởi động với flag
+    <code>--remote-debugging-port=9222</code> và đang mở tab
+    <strong>https://teams.microsoft.com</strong>.
+  </div>
+  <details style="margin-bottom:16px">
+    <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#4a90e2;user-select:none">
+      ▼ Cách khởi động Chrome với CDP
+    </summary>
+    <ol style="margin:10px 0 0 18px;font-size:12px;color:#475569;line-height:2">
+      <li>Đóng <strong>toàn bộ</strong> Chrome hiện tại.</li>
+      <li>Mở <strong>PowerShell</strong> và chạy lệnh bên dưới.</li>
+      <li>Đăng nhập Teams trong tab vừa mở (nếu chưa đăng nhập).</li>
+      <li>Quay lại trang này và bấm nút <strong>"Lấy Token từ Chrome"</strong>.</li>
+    </ol>
+    <div style="background:#0f172a;border-radius:8px;padding:12px 16px;margin-top:10px;overflow-x:auto">
+      <code style="color:#7dd3fc;font-size:11px;white-space:pre">& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --remote-debugging-port=9222 `
+  --user-data-dir="$env:LOCALAPPDATA\Google\Chrome\User Data"</code>
+    </div>
+  </details>
+  <form method="POST" action="{{ url_for('step1_from_chrome') }}" id="cdp-form">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <label style="font-size:13px;font-weight:600;color:#374151;white-space:nowrap">CDP Port:</label>
+      <input type="number" name="cdp_port" value="9222" min="1024" max="65535"
+             style="width:100px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px" />
+      <button type="submit" class="btn btn-primary" id="cdp-btn" onclick="showCDPSpinner()">
+        <span id="cdp-btn-text">🔗 Lấy Token từ Chrome</span>
+        <span id="cdp-spinner" class="spinner hidden"></span>
+      </button>
+    </div>
+    <p id="cdp-msg" class="hidden" style="margin-top:10px;font-size:12px;color:#64748b">
+      ⏳ Đang kết nối Chrome và bắt token, vui lòng chờ… (~5–10 giây)
+    </p>
+  </form>
+</div>
+
 <!-- ── Tip ───────────────────────────────────────────────────────────────── -->
 <div class="info-box">
   💡 <strong>Tip:</strong> Token is valid for approximately 60–90 minutes.
@@ -149,6 +266,79 @@ function showSSOSpinner() {
   document.getElementById('sso-spinner').classList.remove('hidden');
   document.getElementById('sso-btn').disabled = true;
   document.getElementById('sso-msg').classList.remove('hidden');
+}
+
+function toggleProfileForm() {
+  // Legacy — no longer needed
+}
+
+function showProfileSpinner() {
+  document.getElementById('pf-btn-text').classList.add('hidden');
+  document.getElementById('pf-spinner').classList.remove('hidden');
+}
+
+function startCDP() {
+  const btn = document.getElementById('pf-start-btn');
+  const logEl = document.getElementById('pf-log');
+  const statusEl = document.getElementById('pf-status');
+
+  btn.disabled = true;
+  showProfileSpinner();
+  logEl.style.display = 'block';
+  logEl.innerHTML = '🔄 Đang mở trình duyệt…';
+  statusEl.textContent = '';
+
+  fetch("{{ url_for('step1_chrome_profile') }}", { method: 'POST', body: new FormData() })
+    .then(r => r.json())
+    .then(data => {
+      if (data.job_id) {
+        pollCDP(data.job_id);
+      } else {
+        statusEl.innerHTML = '<span style="color:red">❌ Không nhận được job ID</span>';
+        btn.disabled = false;
+        document.getElementById('pf-btn-text').classList.remove('hidden');
+        document.getElementById('pf-spinner').classList.add('hidden');
+      }
+    })
+    .catch(err => {
+      statusEl.innerHTML = `<span style="color:red">❌ Lỗi: ${err}</span>`;
+      btn.disabled = false;
+      document.getElementById('pf-btn-text').classList.remove('hidden');
+      document.getElementById('pf-spinner').classList.add('hidden');
+    });
+}
+
+function pollCDP(jobId) {
+  const logEl = document.getElementById('pf-log');
+  const statusEl = document.getElementById('pf-status');
+  const btn = document.getElementById('pf-start-btn');
+
+  const interval = setInterval(() => {
+    fetch(`/step1/chrome_profile/poll/${jobId}`)
+      .then(r => r.json())
+      .then(job => {
+        // Update log
+        if (job.log && job.log.length > 0) {
+          logEl.innerHTML = job.log.map(l => escHtml(l)).join('<br>');
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        if (job.status === 'done') {
+          clearInterval(interval);
+          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700">✅ Token lấy thành công! Đang chuyển trang…</span>';
+          setTimeout(() => { window.location.href = "{{ url_for('step2') }}"; }, 1500);
+        } else if (job.status === 'error') {
+          clearInterval(interval);
+          statusEl.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;text-align:left;font-size:12px;color:#991b1b">
+            ❌ <strong>Thất bại:</strong><br>${escHtml(job.error || 'Unknown error')}
+          </div>`;
+          btn.disabled = false;
+          document.getElementById('pf-btn-text').classList.remove('hidden');
+          document.getElementById('pf-spinner').classList.add('hidden');
+          document.getElementById('pf-btn-text').textContent = '🔄 Thử lại';
+        }
+      });
+  }, 2000);
 }
 
 function showPWSpinner() {
@@ -246,6 +436,101 @@ function validateManualToken(ta) {
 function escHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showCDPSpinner() {
+  document.getElementById('cdp-btn-text').classList.add('hidden');
+  document.getElementById('cdp-spinner').classList.remove('hidden');
+  document.getElementById('cdp-btn').disabled = true;
+  document.getElementById('cdp-msg').classList.remove('hidden');
+}
+
+// ── Device Code Flow ─────────────────────────────────────────────────────────
+function startDeviceCode() {
+  const btn   = document.getElementById('dc-start-btn');
+  const email = document.getElementById('dc-email').value.trim();
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tìm tenant và khởi tạo…';
+
+  const body = new FormData();
+  if (email) body.append('email', email);
+
+  fetch("{{ url_for('step1_device_code_start') }}", { method: 'POST', body })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('dc-panel').style.display = 'block';
+      pollDeviceCode(data.job_id);
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = '📱 Bắt đầu đăng nhập bằng Device Code';
+      alert('❌ Lỗi kết nối: ' + err);
+    });
+}
+
+function pollDeviceCode(jobId) {
+  const statusEl = document.getElementById('dc-status');
+  const codeEl   = document.getElementById('dc-code');
+  const urlEl    = document.getElementById('dc-url');
+
+  // Tạo thêm vùng hiển thị log
+  let logEl = document.getElementById('dc-log');
+  if (!logEl) {
+    logEl = document.createElement('div');
+    logEl.id = 'dc-log';
+    logEl.style.cssText = 'margin-top:8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;font-family:monospace;max-height:120px;overflow-y:auto;display:none;text-align:left;color:#475569';
+    statusEl.parentNode.insertBefore(logEl, statusEl.nextSibling);
+  }
+
+  const interval = setInterval(() => {
+    fetch(`/step1/device_code/poll/${jobId}`)
+      .then(r => r.json())
+      .then(job => {
+        // Hiển thị log
+        if (job.log && job.log.length > 0) {
+          logEl.style.display = 'block';
+          logEl.innerHTML = job.log.map(l => escHtml(l)).join('<br>');
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // Khi có mã → hiển thị lên UI
+        if (job.user_code) {
+          if (codeEl.textContent.trim() !== job.user_code) {
+            codeEl.textContent = job.user_code;
+            urlEl.href         = job.url;
+            urlEl.textContent  = job.url;
+            statusEl.innerHTML = '⏳ Đang chờ bạn đăng nhập… Mở link trên và nhập mã.';
+          }
+        } else if (job.status === 'waiting') {
+          // Reset UI khi server đang thử client/scope khác
+          codeEl.textContent = '···';
+        }
+
+        if (job.status === 'done') {
+          clearInterval(interval);
+          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700">✅ Đăng nhập thành công! Đang chuyển trang…</span>';
+          logEl.style.display = 'none';
+          setTimeout(() => { window.location.href = "{{ url_for('step2') }}"; }, 1500);
+
+        } else if (job.status === 'error') {
+          clearInterval(interval);
+          // Hiển thị lỗi dạng pre (có thể có \n)
+          const errHtml = escHtml(job.error || 'Lỗi không xác định')
+                            .replace(/\n/g, '<br>');
+          statusEl.innerHTML =
+            `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;
+                          padding:10px 14px;text-align:left;font-size:12px;color:#991b1b">
+               ❌ <strong>Thất bại:</strong><br>${errHtml}
+             </div>`;
+          const btn = document.getElementById('dc-start-btn');
+          btn.disabled = false;
+          btn.textContent = '📱 Thử lại';
+
+        } else if (job.status === 'waiting') {
+          statusEl.textContent = '⏳ Đang tìm client ID phù hợp với tenant…';
+        }
+      });
+  }, 2000);
 }
 </script>
 {% endblock %}

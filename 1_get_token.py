@@ -18,7 +18,56 @@ import getpass
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Danh sách client ID của các Microsoft first-party apps
+# (luôn có service principal trong mọi Microsoft 365 tenant)
+# Thử lần lượt — app nào được tenant cho phép sẽ dùng app đó.
+_CANDIDATE_CLIENT_IDS = [
+    ("Microsoft Teams",          "1fec8e78-bce4-4aaf-ab1b-5451cc387264"),
+    ("Microsoft Teams (Mobile)", "d3590ed6-52b3-4102-aeff-aad2292ab01c"),
+    ("Azure CLI",                "04b07795-8ddb-461a-bbee-02f9e1bf7b46"),
+    ("Microsoft Office",         "d3590ed6-52b3-4102-aeff-aad2292ab01c"),
+]
+
+TEAMS_CLIENT_ID  = "1fec8e78-bce4-4aaf-ab1b-5451cc387264"   # mặc định, ghi đè bởi auto-detect
+GRAPH_SCOPES     = [
+    "https://graph.microsoft.com/Team.ReadBasic.All",
+    "https://graph.microsoft.com/Channel.ReadBasic.All",
+    "https://graph.microsoft.com/ChannelMessage.Read.All",
+    "https://graph.microsoft.com/Chat.Read",
+    "https://graph.microsoft.com/Chat.ReadBasic",
+    "https://graph.microsoft.com/ChatMessage.Read",
+]
+# Dùng tenant ID cụ thể thay vì "organizations" để tránh lỗi AADSTS1001010
+# Sẽ được thay thế bằng tenant ID thực tế trong get_token_device_code()
+AUTHORITY        = "https://login.microsoftonline.com/organizations"
+
 TOKEN_FILE = "token.json"
+
+
+# ── Helpers: tự detect client ID phù hợp với tenant ─────────────────────────
+
+def _detect_tenant_id(email: str) -> str | None:
+    """
+    Lấy tenant ID từ email bằng cách query OpenID metadata.
+    Ví dụ: user@company.com → tenant ID của company.com
+    """
+    import urllib.request
+    domain = email.split("@")[-1] if "@" in email else None
+    if not domain:
+        return None
+    try:
+        url  = f"https://login.microsoftonline.com/{domain}/.well-known/openid-configuration"
+        with urllib.request.urlopen(url, timeout=5) as r:
+            data = json.loads(r.read())
+        # token_endpoint = https://login.microsoftonline.com/{tenant_id}/oauth2/token
+        token_ep = data.get("token_endpoint", "")
+        parts    = token_ep.split("/")
+        idx      = parts.index("microsoftonline.com") if "microsoftonline.com" in parts else -1
+        if idx >= 0 and idx + 1 < len(parts):
+            return parts[idx + 1]
+    except Exception:
+        pass
+    return None
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
@@ -231,12 +280,91 @@ def get_token_password(browser: str = "edge") -> str | None:
     return captured["token"]
 
 
+# ── Method D: MSAL Device Code Flow ──────────────────────────────────────────
+
+def get_token_device_code(email: str = "", scopes: list = None,
+                          on_code: callable = None) -> str | None:
+    """
+    Lấy token qua MSAL Device Code Flow.
+    Tự động thử nhiều client ID cho đến khi tìm được app được tenant cho phép.
+
+    Tham số:
+        email    : email người dùng — dùng để detect tenant ID chính xác
+        scopes   : danh sách scope Graph API cần
+        on_code  : callback(user_code, url) — gọi khi có mã để hiển thị
+    """
+    import msal
+
+    if scopes is None:
+        scopes = GRAPH_SCOPES
+
+    # Xác định authority: dùng tenant ID cụ thể nếu biết email
+    tenant_id = _detect_tenant_id(email) if email else None
+    authority = (
+        f"https://login.microsoftonline.com/{tenant_id}"
+        if tenant_id
+        else "https://login.microsoftonline.com/organizations"
+    )
+    if tenant_id:
+        print(f"🏢 Detected tenant: {tenant_id}")
+
+    last_error = ""
+    for app_name, client_id in _CANDIDATE_CLIENT_IDS:
+        print(f"🔑 Thử client: {app_name} ({client_id[:8]}…)")
+        app = msal.PublicClientApplication(client_id, authority=authority)
+
+        # Thử cache trước
+        accounts = app.get_accounts()
+        if accounts:
+            result = app.acquire_token_silent(scopes, account=accounts[0])
+            if result and "access_token" in result:
+                print(f"✅ Dùng token từ MSAL cache ({app_name}).")
+                return result["access_token"]
+
+        flow = app.initiate_device_flow(scopes=scopes)
+
+        if "user_code" not in flow:
+            err = flow.get("error_description", flow.get("error", "unknown"))
+            # Lỗi service principal = tenant không có app này → thử app khác
+            if "AADSTS1001010" in err or "AADSTS700016" in err or "does not exist" in err.lower():
+                print(f"   ⚠️  Tenant không có {app_name} — thử app tiếp theo…")
+                last_error = err
+                continue
+            print(f"❌ Lỗi khởi tạo device flow: {err}")
+            return None
+
+        # Có mã rồi — hiển thị cho user
+        if on_code:
+            on_code(flow["user_code"], flow["verification_uri"])
+        else:
+            print("\n" + "="*60)
+            print("📱 ĐĂNG NHẬP THEO BƯỚC SAU:")
+            print(f"   1. Mở trình duyệt: {flow['verification_uri']}")
+            print(f"   2. Nhập mã       : {flow['user_code']}")
+            print(f"   3. Đăng nhập tài khoản Microsoft / Teams")
+            print(f"   ⏰ Hết hạn sau   : {flow.get('expires_in', 900)//60} phút")
+            print("="*60 + "\n")
+
+        result = app.acquire_token_by_device_flow(flow)
+
+        if "access_token" in result:
+            print(f"✅ Đăng nhập thành công! (via {app_name})")
+            return result["access_token"]
+
+        err = result.get("error_description", result.get("error", ""))
+        print(f"❌ Thất bại ({app_name}): {err}")
+        return None   # user đã thấy code rồi → không thử app khác nữa
+
+    print(f"❌ Không có client ID nào được tenant chấp nhận.\nLỗi cuối: {last_error}")
+    return None
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Lấy Bearer token từ Teams")
-    parser.add_argument("--method", choices=["sso", "password"], default="sso",
-                        help="Phương thức lấy token (mặc định: sso)")
+    parser.add_argument("--method", choices=["sso", "password", "device"], default="device",
+                        help="Phương thức lấy token (mặc định: device)")
     parser.add_argument("--browser", choices=["edge", "chrome"], default="edge",
                         help="Trình duyệt sử dụng (mặc định: edge)")
     parser.add_argument("--force", action="store_true",
@@ -251,7 +379,9 @@ def main():
 
     # Lấy token mới
     print(f"\n🔄 Lấy token mới bằng phương thức: {args.method.upper()}")
-    if args.method == "sso":
+    if args.method == "device":
+        token = get_token_device_code()
+    elif args.method == "sso":
         token = get_token_sso(browser=args.browser)
     else:
         token = get_token_password(browser=args.browser)
