@@ -2,13 +2,13 @@
   "browser": "chrome",
   "channels": [],
   "export": {
-    "date_from": "2026-02-25",
+    "date_from": "2025-12-28",
     "date_to": "",
     "output_dir": "output",
     "include_replies": true,
     "mark_replies": true,
     "timezone_offset": 9,
-    "file_naming": "{team}_{channel}_{date}.xlsx",
+    "file_naming": "{team}_{channel}_{date}",
     "fields": {
       "type": true,
       "datetime": true,
@@ -23,6 +23,111 @@
       "chat_id": "19:ecca69f63afe4c6187a68e32bc939198@thread.v2",
       "chat_type": "group",
       "display_name": "[KAIKEI]_09_XUD109_回数マスタ"
+    },
+    {
+      "chat_id": "19:b052d91c0fa841b989471a416df3a3d5@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] 12_XUD107 (条件マスタ |  Condition Master)"
+    },
+    {
+      "chat_id": "19:8d77392ba2f44d2eb08d26d3d29ee554@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD012 (部門マスタ｜DEPT)"
+    },
+    {
+      "chat_id": "19:60564f48f2974d1ab9d0bc884c87f71e@thread.v2",
+      "chat_type": "group",
+      "display_name": "KAIKEI"
+    },
+    {
+      "chat_id": "19:dc7a57309bc144eba4d03cd95f928084@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD013 (コースマスタ｜COURSE)"
+    },
+    {
+      "chat_id": "19:aedcb0ab5ddb4f838d1ab2b3ab99e545@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD011 (11_法人マスタ｜CORP) - Released"
+    },
+    {
+      "chat_id": "19:meeting_YzI4OTMxZjItOTFlOC00NGE2LTllMGItNjRiYzI2MGI5YWJi@thread.v2",
+      "chat_type": "group",
+      "display_name": "[Social] Weekly report content Discuss"
+    },
+    {
+      "chat_id": "19:d59da802821e4913b69df0dcea51cc1c@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] 11_XUD102 (予算マスタ画面 | Budget Master)"
+    },
+    {
+      "chat_id": "19:f8ebf1557e224667a8c0bc556a54d1b6@thread.v2",
+      "chat_type": "group",
+      "display_name": "Tester and Ms Van Cute"
+    },
+    {
+      "chat_id": "19:0c1aaf657795440085f3fd38bf89b800@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD016 (勘定科目マスタ｜ACCOUNT)"
+    },
+    {
+      "chat_id": "19:517e8ddb532842bfb82d571735f0df29@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWBW01_顧客情報修正｜EDIT"
+    },
+    {
+      "chat_id": "19:acda22aa61b34420acc26e2acc1e7b3b@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWEW01_お客様検索｜SEARCH"
+    },
+    {
+      "chat_id": "19:0998694fb8a54864bc71e7ca38e0c4b2@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWEW02_成績基本情報更新｜UPDATE"
+    },
+    {
+      "chat_id": "19:5508b03a425f47e8b0cb9fcc6f30c532@thread.v2",
+      "chat_type": "group",
+      "display_name": "OKRW01_申込要確認者登録｜REGISTER"
+    },
+    {
+      "chat_id": "19:08be55406e4b4a8da7616c84ea51a276@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWFW1100_別人顧客上書リストダウンロード_Overwrite List Download"
+    },
+    {
+      "chat_id": "19:bd0a54801d9943b6b02132b0e869f1b3@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWFW0700_DM送付フラグ状況ダウンロード_DM Download"
+    },
+    {
+      "chat_id": "19:b9167c514f154ad4b78db4bf79c5ed58@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWFW0900_名寄せ対象外データダウンロード_Non-matching data Download"
+    },
+    {
+      "chat_id": "19:617f9a5a4c734a53a5140b407f3e982e@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWFW1000_名寄せ候補者データダウンロード"
+    },
+    {
+      "chat_id": "19:a69c265574774651b68725787e8e5c91@thread.v2",
+      "chat_type": "group",
+      "display_name": "OWCW01_一本化入力｜MERGE"
+    },
+    {
+      "chat_id": "19:8395b4eab9af44ca93e17cdce261f61b@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD014 (大行事マスタ｜BigEVENT)"
+    },
+    {
+      "chat_id": "19:978b2e8b1571423cab724d2e69109a29@thread.v2",
+      "chat_type": "group",
+      "display_name": "[KAIKEI] XUD015 (大小行事マスタ｜SmallEVENT)"
+    },
+    {
+      "chat_id": "19:4e78e85783b54d53816413bd6d1b9a9e@thread.v2",
+      "chat_type": "group",
+      "display_name": "[MC199] Social Info Dept Fixed Member"
     }
   ]
 }

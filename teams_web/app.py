@@ -3744,21 +3744,26 @@ def step4_progress(job_id: str):
 def step4_download(filename: str):
     # Prevent path traversal: only allow bare filenames from output dir
     safe = Path(filename).name
-    if not safe.endswith(".xlsx"):
+    if not safe.endswith((".xlsx", ".docx")):
         return "Invalid file type", 400
     file_path = OUTPUT_DIR / safe
     if not file_path.exists():
         return "File not found", 404
-    return send_file(file_path, as_attachment=True)
+    mimetype = (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        if safe.endswith(".docx") else
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    return send_file(file_path, as_attachment=True, mimetype=mimetype)
 
 
 @app.route("/step4/download_zip")
 def step4_download_zip():
     if not OUTPUT_DIR.exists():
         return "No output directory", 404
-    files = list(OUTPUT_DIR.glob("*.xlsx"))
+    files = list(OUTPUT_DIR.glob("*.xlsx")) + list(OUTPUT_DIR.glob("*.docx"))
     if not files:
-        return "No Excel files found", 404
+        return "No export files found", 404
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
